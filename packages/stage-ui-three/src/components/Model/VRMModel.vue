@@ -178,10 +178,10 @@ function setupColliders(activeVrm: VRM) {
 
   const targetBones = [
     { name: 'head', size: [0.22, 0.25, 0.25], offset: [0, 0.05, 0] },
-    { name: 'leftHand', size: [0.15, 0.15, 0.15], offset: [0, 0, 0] },
-    { name: 'rightHand', size: [0.15, 0.15, 0.15], offset: [0, 0, 0] },
-    { name: 'leftFoot', size: [0.15, 0.15, 0.25], offset: [0, 0, 0] },
-    { name: 'rightFoot', size: [0.15, 0.15, 0.25], offset: [0, 0, 0] },
+    { name: 'leftHand', size: [0.2, 0.2, 0.2], offset: [0.06, 0, 0] },
+    { name: 'rightHand', size: [0.2, 0.2, 0.2], offset: [-0.06, 0, 0] },
+    { name: 'leftFoot', size: [0.15, 0.15, 0.25], offset: [0, -0.05, -0.08] },
+    { name: 'rightFoot', size: [0.15, 0.15, 0.25], offset: [0, -0.05, -0.08] },
   ] as const
 
   const material = new MeshBasicMaterial({
