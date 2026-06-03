@@ -88,6 +88,23 @@ const { mouthOpenSize, nowSpeaking } = storeToRefs(useSpeakingStore())
 const { audioContext } = useAudioContext()
 const currentAudioSource = ref<AudioBufferSourceNode>()
 
+function onVRMInteract(boneName: string) {
+  // eslint-disable-next-line no-console
+  console.log(`[Stage] VRM interaction callback triggered for bone: ${boneName}`)
+
+  if (vrmViewerRef.value) {
+    if (boneName === 'head') {
+      void vrmViewerRef.value.setExpression('happy', 1.0)
+    }
+    else if (boneName === 'leftHand' || boneName === 'rightHand') {
+      void vrmViewerRef.value.setExpression('surprised', 1.0)
+    }
+    else if (boneName === 'leftFoot' || boneName === 'rightFoot') {
+      void vrmViewerRef.value.setExpression('relaxed', 1.0)
+    }
+  }
+}
+
 const { onBeforeMessageComposed, onBeforeSend, onTokenLiteral, onTokenSpecial, onStreamEnd, onAssistantResponseEnd } = useChatOrchestratorStore()
 const chatHookCleanups: Array<() => void> = []
 // WORKAROUND: clear previous handlers on unmount to avoid duplicate calls when this component remounts.
@@ -904,6 +921,7 @@ defineExpose({
         :enable-orbit-controls="props.enableOrbitControls"
         :current-audio-source="currentAudioSource"
         @error="console.error"
+        @vrm-interact="onVRMInteract"
       />
       <SpineScene
         v-if="stageModelRenderer === 'spine' && showStage"

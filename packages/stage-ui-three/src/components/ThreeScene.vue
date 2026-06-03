@@ -25,6 +25,8 @@ import {
   Euler,
   MathUtils,
   PerspectiveCamera,
+  Raycaster,
+  Vector2,
   Vector3,
 } from 'three'
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
@@ -80,6 +82,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'loadModelProgress', value: number): void
   (e: 'error', value: unknown): void
+  (e: 'vrmInteract', value: string): void
 }>()
 
 type ModelPhase = 'no-model' | 'loading' | 'ready' | 'error'
@@ -498,6 +501,7 @@ function onSkyBoxReady(EnvPayload: {
 function onTresReady(context: TresContext) {
   tresContextRef.value = context
   canvasReady.value = true
+  context.renderer.instance.domElement.addEventListener('click', onCanvasClick)
   emitSceneSubtreeTrace('tresCanvasRef', 'attached')
   setScenePhaseWithTrace(resolveScenePhaseAfterBinding(), 'tres:ready')
 }
@@ -521,6 +525,32 @@ function onTresRender() {
   })
 }
 
+const pickingRaycaster = new Raycaster()
+const pickingMouse = new Vector2()
+
+function onCanvasClick(event: MouseEvent) {
+  const canvasElement = tresContextRef.value?.renderer.instance.domElement
+  if (!canvasElement || !modelRef.value)
+    return
+
+  const rect = canvasElement.getBoundingClientRect()
+
+  pickingMouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+  pickingMouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+  pickingRaycaster.setFromCamera(pickingMouse, camera.value)
+
+  const activeColliders = modelRef.value.colliders || []
+  const intersects = pickingRaycaster.intersectObjects(activeColliders)
+
+  if (intersects.length > 0) {
+    const hitObject = intersects[0].object
+    const boneName = hitObject.name.replace('vrm_collider_', '')
+    console.info(`[stage-ui-three] VRM click detected on bone: ${boneName}`)
+    emit('vrmInteract', boneName)
+  }
+}
+
 onMounted(() => {
   if (envSelect.value === 'skyBox') {
     skyBoxEnvRef.value?.reload(skyBoxSrc.value)
@@ -528,6 +558,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  const canvas = tresContextRef.value?.renderer.instance.domElement
+  if (canvas)
+    canvas.removeEventListener('click', onCanvasClick)
+
   invalidateBindingRevision()
   if (tresContextRef.value)
     emitSceneSubtreeTrace('tresCanvasRef', 'detached')

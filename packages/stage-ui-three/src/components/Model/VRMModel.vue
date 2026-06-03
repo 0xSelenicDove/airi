@@ -35,8 +35,10 @@ import { until } from '@vueuse/core'
 import {
   AnimationMixer,
   Box3,
+  BoxGeometry,
   MathUtils,
   Mesh,
+  MeshBasicMaterial,
   MeshPhysicalMaterial,
   MeshStandardMaterial,
   Raycaster,
@@ -169,6 +171,41 @@ const { renderer, scene } = useTresContext()
 const vrm = shallowRef<VRM>()
 const vrmGroup = shallowRef<Group>()
 const modelLoaded = ref<boolean>(false)
+const colliders = shallowRef<Mesh[]>([])
+
+function setupColliders(activeVrm: VRM) {
+  colliders.value = []
+
+  const targetBones = [
+    { name: 'head', size: [0.22, 0.25, 0.25], offset: [0, 0.05, 0] },
+    { name: 'leftHand', size: [0.15, 0.15, 0.15], offset: [0, 0, 0] },
+    { name: 'rightHand', size: [0.15, 0.15, 0.15], offset: [0, 0, 0] },
+    { name: 'leftFoot', size: [0.15, 0.15, 0.25], offset: [0, 0, 0] },
+    { name: 'rightFoot', size: [0.15, 0.15, 0.25], offset: [0, 0, 0] },
+  ] as const
+
+  const material = new MeshBasicMaterial({
+    visible: false,
+    wireframe: true,
+  })
+
+  const list: Mesh[] = []
+
+  targetBones.forEach(({ name, size, offset }) => {
+    const boneNode = activeVrm.humanoid?.getNormalizedBoneNode(name as any)
+    if (boneNode) {
+      const geometry = new BoxGeometry(size[0], size[1], size[2])
+      const collider = new Mesh(geometry, material)
+      collider.name = `vrm_collider_${name}`
+      collider.position.set(offset[0], offset[1], offset[2])
+      boneNode.add(collider)
+      list.push(collider)
+    }
+  })
+
+  colliders.value = list
+}
+
 let loadSequence = 0
 // for eye tracking modes
 const raycaster = new Raycaster()
@@ -538,6 +575,7 @@ function componentCleanUp(
   airiIblProbe?.dispose()
   airiIblProbe = null
   clearActiveManagedVrmRefs()
+  colliders.value = []
   modelLoaded.value = false
 
   if (hasCleanupWork && isStageThreeRuntimeTraceEnabled()) {
@@ -703,6 +741,7 @@ async function loadModel() {
           vrmGroup: reusableInstance.group,
         })
         emit('sceneBootstrap', buildSceneBootstrap(reusableInstance.vrm, true))
+        setupColliders(reusableInstance.vrm)
         commitManagedVrmInstance(reusableInstance)
         didCommitLoad = true
 
@@ -852,6 +891,8 @@ async function loadModel() {
     }
 
     emit('sceneBootstrap', buildSceneBootstrap(_vrm, false))
+
+    setupColliders(_vrm)
 
     commitManagedVrmInstance(createManagedVrmInstance({
       emote: nextVrmEmote,
@@ -1008,6 +1049,7 @@ if (import.meta.hot) {
 }
 
 defineExpose({
+  colliders,
   setExpression(expression: string, intensity = 1) {
     vrmEmote.value?.setEmotionWithResetAfter(expression, 3000, intensity)
   },
